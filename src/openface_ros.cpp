@@ -11,14 +11,18 @@
 #include <OpenFace/Visualizer.h>
 #include <OpenFace/VisualizationUtils.h>
 
+#define fx 615.6707153320312
+#define fy 615.962158203125
+#define cx 328.0010681152344
+#define cy 241.31031799316406
+
+
 static const std::string DEPTH_OPENCV_WINDOW = "Depth Image";
 
 std::shared_ptr<LandmarkDetector::FaceModelParameters> det_parameters;
 std::shared_ptr<LandmarkDetector::CLNF> face_model;
 std::shared_ptr<Utilities::Visualizer> visualizer;
 Utilities::FpsTracker fps_tracker;
-
-int sequence_number = 0;
 
 void colorCb(const sensor_msgs::ImageConstPtr& msg)
 {
@@ -41,19 +45,18 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     // If tracking succeeded and we have an eye model, estimate gaze
     if (detection_success && face_model->eye_model)
     {
-        GazeAnalysis::EstimateGaze(*face_model, gazeDirection0, -1, -1, -1, -1, true);
-        GazeAnalysis::EstimateGaze(*face_model, gazeDirection1, -1, -1, -1, -1, false);
+        GazeAnalysis::EstimateGaze(*face_model, gazeDirection0, fx, fy, cx, cy, true);
+        GazeAnalysis::EstimateGaze(*face_model, gazeDirection1, fx, fy, cx, cy, false);
     }
 
     // Work out the pose of the head from the tracked model
-    cv::Vec6d pose_estimate = LandmarkDetector::GetPose(*face_model, -1, -1, -1, -1);
+    cv::Vec6d pose_estimate = LandmarkDetector::GetPose(*face_model, fx, fy, cx, cy);
 
     // Displaying the tracking visualizations
-    visualizer->SetImage(rgb_image, -1, -1, -1, -1);
+    visualizer->SetImage(rgb_image, fx, fy, cx, cy);
     visualizer->SetObservationLandmarks(face_model->detected_landmarks, face_model->detection_certainty, face_model->GetVisibilities());
     visualizer->SetObservationPose(pose_estimate, face_model->detection_certainty);
-    visualizer->SetObservationGaze(gazeDirection0, gazeDirection1, LandmarkDetector::CalculateAllEyeLandmarks(*face_model), LandmarkDetector::Calculate3DEyeLandmarks(*face_model, -1, -1, -1, -1), face_model->detection_certainty);
-
+    visualizer->SetObservationGaze(gazeDirection0, gazeDirection1, LandmarkDetector::CalculateAllEyeLandmarks(*face_model), LandmarkDetector::Calculate3DEyeLandmarks(*face_model, fx, fy, cx, cy), face_model->detection_certainty);
     char character_press = visualizer->ShowObservation();
     // restart the tracker
     if (character_press == 'r')
