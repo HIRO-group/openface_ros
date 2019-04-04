@@ -120,7 +120,7 @@ int main(int argc, char** argv)
     det_parameters = std::make_shared<LandmarkDetector::FaceModelParameters>(arguments);
     face_model = std::make_shared<LandmarkDetector::CLNF>(det_parameters->model_location);
     face_analysis_params = std::make_shared<FaceAnalysis::FaceAnalyserParameters>(arguments);
-    face_analyser = std::make_shared<FaceAnalysis::FaceAnalyserParameters>(face_analysis_params);
+    face_analyser = std::make_shared<FaceAnalysis::FaceAnalyser>(*face_analysis_params);
     if (!face_model->loaded_successfully)
     {
         std::cout << "ERROR: Could not load the landmark detector" << std::endl;
