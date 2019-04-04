@@ -7,6 +7,8 @@
 
 #include <OpenFace/LandmarkCoreIncludes.h>
 #include <OpenFace/GazeEstimation.h>
+#include <OpenFace/FaceAnalyserParameters.h>
+#include <OpenFace/FaceAnalyser.h>
 #include <OpenFace/SequenceCapture.h>
 #include <OpenFace/Visualizer.h>
 #include <OpenFace/VisualizationUtils.h>
@@ -21,8 +23,11 @@ static const std::string DEPTH_OPENCV_WINDOW = "Depth Image";
 
 std::shared_ptr<LandmarkDetector::FaceModelParameters> det_parameters;
 std::shared_ptr<LandmarkDetector::CLNF> face_model;
+std::shared_ptr<FaceAnalysis::FaceAnalyserParameters> face_analysis_params;
+std::shared_ptr<FaceAnalysis::FaceAnalyser> face_analyser;
 std::shared_ptr<Utilities::Visualizer> visualizer;
 Utilities::FpsTracker fps_tracker;
+
 
 void colorCb(const sensor_msgs::ImageConstPtr& msg)
 {
@@ -47,6 +52,15 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     {
         GazeAnalysis::EstimateGaze(*face_model, gazeDirection0, fx, fy, cx, cy, true);
         GazeAnalysis::EstimateGaze(*face_model, gazeDirection1, fx, fy, cx, cy, false);
+    }
+
+    cv::Mat sim_warped_img;
+    cv::Mat_<double> hog_descriptor; int num_hog_rows = 0, num_hog_cols = 0;    
+    if (visualizer->vis_align || visualizer->vis_hog || visualizer->vis_aus)
+    {
+        face_analyser->AddNextFrame(rgb_image, face_model->detected_landmarks, face_model->detection_success, ros::Time::now().toSec(), true);
+        face_analyser->GetLatestAlignedFace(sim_warped_img);
+        face_analyser->GetLatestHOG(hog_descriptor, num_hog_rows, num_hog_cols);
     }
 
     // Work out the pose of the head from the tracked model
@@ -105,6 +119,8 @@ int main(int argc, char** argv)
 
     det_parameters = std::make_shared<LandmarkDetector::FaceModelParameters>(arguments);
     face_model = std::make_shared<LandmarkDetector::CLNF>(det_parameters->model_location);
+    face_analysis_params = std::make_shared<FaceAnalysis::FaceAnalyserParameters>(arguments);
+    face_analyser = std::make_shared<FaceAnalysis::FaceAnalyserParameters>(face_analysis_params);
     if (!face_model->loaded_successfully)
     {
         std::cout << "ERROR: Could not load the landmark detector" << std::endl;
