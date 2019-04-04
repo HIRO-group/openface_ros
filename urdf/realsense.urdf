@@ -1,0 +1,28 @@
+<robot name="sawyer" xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <link name="camera_link">
+        <visual>
+        <origin rpy="1.57079632679 0 1.57079632679" xyz="0 0 0"/>
+        <geometry>
+            <mesh filename="package://openface_ros/meshes/d435.dae"/>
+        </geometry>
+        <material name="darkgray"/>
+        </visual>
+        <collision>
+        <origin rpy="1.57079632679 0 1.57079632679" xyz="0 0 0"/>
+        <geometry>
+            <sphere radius="0.001"/>
+        </geometry>
+        </collision>
+        <inertial>
+        <origin rpy="1.57079632679 0 1.57079632679" xyz="0 0 0"/>
+        <mass value="0.0001"/>
+        <inertia ixx="1e-08" ixy="0" ixz="0" iyy="1e-08" iyz="0" izz="1e-08"/>
+        </inertial>
+    </link>
+    <joint name="camera_link_base" type="fixed">
+        <origin rpy="0 0 0" xyz="0.025 0 0.25"/>
+        <parent link="head"/>
+        <child link="camera_link"/>
+        <axis xyz="0 0 0"/>
+    </joint>
+</robot>
