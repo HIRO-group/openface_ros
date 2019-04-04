@@ -56,12 +56,9 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
 
     cv::Mat sim_warped_img;
     cv::Mat_<double> hog_descriptor; int num_hog_rows = 0, num_hog_cols = 0;    
-    if (visualizer->vis_align || visualizer->vis_hog || visualizer->vis_aus)
-    {
-        face_analyser->AddNextFrame(rgb_image, face_model->detected_landmarks, face_model->detection_success, ros::Time::now().toSec(), true);
-        face_analyser->GetLatestAlignedFace(sim_warped_img);
-        face_analyser->GetLatestHOG(hog_descriptor, num_hog_rows, num_hog_cols);
-    }
+    face_analyser->AddNextFrame(rgb_image, face_model->detected_landmarks, face_model->detection_success, ros::Time::now().toSec(), true);
+    face_analyser->GetLatestAlignedFace(sim_warped_img);
+    face_analyser->GetLatestHOG(hog_descriptor, num_hog_rows, num_hog_cols);
 
     // Work out the pose of the head from the tracked model
     cv::Vec6d pose_estimate = LandmarkDetector::GetPose(*face_model, fx, fy, cx, cy);
@@ -71,12 +68,19 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     visualizer->SetObservationLandmarks(face_model->detected_landmarks, face_model->detection_certainty, face_model->GetVisibilities());
     visualizer->SetObservationPose(pose_estimate, face_model->detection_certainty);
     visualizer->SetObservationGaze(gazeDirection0, gazeDirection1, LandmarkDetector::CalculateAllEyeLandmarks(*face_model), LandmarkDetector::Calculate3DEyeLandmarks(*face_model, fx, fy, cx, cy), face_model->detection_certainty);
+    visualizer->SetObservationActionUnits(face_analyser->GetCurrentAUsReg(), face_analyser->GetCurrentAUsClass());
     char character_press = visualizer->ShowObservation();
     // restart the tracker
     if (character_press == 'r')
     {
         face_model->Reset();
     }
+    // // display AU
+    // for (auto au : face_analyser->GetCurrentAUsClass())
+    // {
+    //     std::cout << au.first << ": " << au.second << std::endl;
+    // }
+
 }
 
 void depthCb(const sensor_msgs::ImageConstPtr& msg)
