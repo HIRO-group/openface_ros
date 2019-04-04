@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch" />
+    <node name="send_urdf_fragment" pkg="intera_interface" type="send_urdf_fragment.py" output="screen" args="-f $(find openface_ros)/urdf/realsense.urdf -l head -j camera_link_base" />
+</launch>
