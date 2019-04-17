@@ -28,6 +28,16 @@ std::shared_ptr<FaceAnalysis::FaceAnalyser> face_analyser;
 std::shared_ptr<Utilities::Visualizer> visualizer;
 Utilities::FpsTracker fps_tracker;
 
+void calculatePupil(cv::Point3f& pupil_left, cv::Point3f& pupil_right, const std::vector<cv::Point3f>& eye_landmarks3d)
+{
+    for (size_t i = 0; i < 8; ++i)
+        {
+            pupil_left = pupil_left + eye_landmarks3d[i];
+            pupil_right = pupil_right + eye_landmarks3d[i + eye_landmarks3d.size()/2];
+        }
+        pupil_left = pupil_left / 8;
+        pupil_right = pupil_right / 8;
+}
 
 void colorCb(const sensor_msgs::ImageConstPtr& msg)
 {
@@ -47,11 +57,14 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     bool detection_success = LandmarkDetector::DetectLandmarksInVideo(rgb_image, *face_model, *det_parameters, grayscale_image);
     cv::Point3f gazeDirection0(0, 0, -1);
     cv::Point3f gazeDirection1(0, 0, -1);
+    cv::Point3f pupil_left(0, 0, 0);
+    cv::Point3f pupil_right(0, 0, 0);
     // If tracking succeeded and we have an eye model, estimate gaze
     if (detection_success && face_model->eye_model)
     {
         GazeAnalysis::EstimateGaze(*face_model, gazeDirection0, fx, fy, cx, cy, true);
         GazeAnalysis::EstimateGaze(*face_model, gazeDirection1, fx, fy, cx, cy, false);
+        calculatePupil(pupil_left, pupil_right, LandmarkDetector::Calculate3DEyeLandmarks(*face_model, fx, fy, cx, cy));
     }
 
     cv::Mat sim_warped_img;
@@ -64,21 +77,37 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     cv::Vec6d pose_estimate = LandmarkDetector::GetPose(*face_model, fx, fy, cx, cy);
 
     // Displaying the tracking visualizations
+    std::vector<pair<string, double>> face_actions_class = face_analyser->GetCurrentAUsClass();
+
     visualizer->SetImage(rgb_image, fx, fy, cx, cy);
     visualizer->SetObservationLandmarks(face_model->detected_landmarks, face_model->detection_certainty, face_model->GetVisibilities());
     visualizer->SetObservationPose(pose_estimate, face_model->detection_certainty);
     visualizer->SetObservationGaze(gazeDirection0, gazeDirection1, LandmarkDetector::CalculateAllEyeLandmarks(*face_model), LandmarkDetector::Calculate3DEyeLandmarks(*face_model, fx, fy, cx, cy), face_model->detection_certainty);
-    visualizer->SetObservationActionUnits(face_analyser->GetCurrentAUsReg(), face_analyser->GetCurrentAUsClass());
+    visualizer->SetObservationActionUnits(face_analyser->GetCurrentAUsReg(), face_actions_class);
     char character_press = visualizer->ShowObservation();
     // restart the tracker
     if (character_press == 'r')
     {
         face_model->Reset();
     }
+
+    std::cout << gazeDirection0 << ": " << gazeDirection1 << std::endl;
+    std::cout << pupil_left << ": " << pupil_right << std::endl;
     // // display AU
-    // for (auto au : face_analyser->GetCurrentAUsClass())
+    // for (auto au : face_actions_class)
     // {
     //     std::cout << au.first << ": " << au.second << std::endl;
+    // }
+
+    // if (face_actions_class[0].second == 1)
+    // {
+    //     std::cout << face_actions_class[0].first << std::endl;
+    //     std::cout << "Angry!!!" << std::endl;
+    // }
+    // else if (face_actions_class[2].second == 1 && face_actions_class[5].second == 1)
+    // {
+    //     std::cout << face_actions_class[2].first << ", " << face_actions_class[5].first << std::endl;
+    //     std::cout << "Smile!!!" << std::endl;
     // }
 
 }
@@ -110,7 +139,6 @@ vector<string> get_arguments(int argc, char **argv)
     return arguments;
 }
 
-
 int main(int argc, char** argv)
 {
     vector<string> arguments = get_arguments(argc, argv);
@@ -125,6 +153,7 @@ int main(int argc, char** argv)
     face_model = std::make_shared<LandmarkDetector::CLNF>(det_parameters->model_location);
     face_analysis_params = std::make_shared<FaceAnalysis::FaceAnalyserParameters>(arguments);
     face_analyser = std::make_shared<FaceAnalysis::FaceAnalyser>(*face_analysis_params);
+     
     if (!face_model->loaded_successfully)
     {
         std::cout << "ERROR: Could not load the landmark detector" << std::endl;
