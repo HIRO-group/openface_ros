@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
+#include <tf/transform_broadcaster.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
@@ -29,6 +30,7 @@ std::shared_ptr<FaceAnalysis::FaceAnalyserParameters> face_analysis_params;
 std::shared_ptr<FaceAnalysis::FaceAnalyser> face_analyser;
 std::shared_ptr<Utilities::Visualizer> visualizer;
 std::shared_ptr<tf::TransformListener> listener;
+std::shared_ptr<tf::TransformBroadcaster> broadcaster;
 Utilities::FpsTracker fps_tracker;
 cv_bridge::CvImagePtr cv_depth_ptr;
 bool cv_depth_valid;
@@ -180,7 +182,9 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     if (detection_success && face_model->eye_model)
     {
         cv::line(rgb_image, cv::Point( cvRound(proj_points.at<float>(0, 0)), cvRound(proj_points.at<float>(0, 1))), cv::Point( cvRound(proj_points.at<float>(1, 0)), cvRound(proj_points.at<float>(1, 1)) ), cv::Scalar(110, 220, 0), 2);
-    }std::cout << (int)(cvRound(proj_points.at<float>(0, 0) * 16.0)) << ", " << (int)(cvRound(proj_points.at<float>(0, 1) * 16.0 )) << ", " << (cvRound(proj_points.at<float>(1, 0) * 16.0)) << ", " <<  (cvRound(proj_points.at<float>(1, 1) * 16.0) ) << std::endl;
+    }
+    std::cout << (int)(cvRound(proj_points.at<float>(0, 0) * 16.0)) << ", " << (int)(cvRound(proj_points.at<float>(0, 1) * 16.0 )) << ", " << (cvRound(proj_points.at<float>(1, 0) * 16.0)) << ", " <<  (cvRound(proj_points.at<float>(1, 1) * 16.0) ) << std::endl;
+
     // Displaying the tracking visualizations
     std::vector<pair<string, double>> face_actions_class = face_analyser->GetCurrentAUsClass();
 
@@ -210,9 +214,22 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
 
     std::vector<float> real_pupil_left = realDistanceTransform(pupil_left.x, pupil_left.y, depth_left);
     std::vector<float> real_pupil_left_tmp{real_pupil_left[0]-gazeDirection0.x, real_pupil_left[1]-gazeDirection0.y, real_pupil_left[2]-gazeDirection0.z};
-    std::vector<float> real_pupil_right =realDistanceTransform(pupil_right.x, pupil_right.y, depth_right);
+    std::vector<float> real_pupil_right = realDistanceTransform(pupil_right.x, pupil_right.y, depth_right);
     // std::cout << "Real left pupil position: " << real_pupil_left[0] << ", " << real_pupil_left[1] << ", " << depth_left << std::endl;
     // std::cout << "Real right pupil position: " << real_pupil_right[0] << ", " << real_pupil_right[1] << ", " << depth_right << std::endl;
+
+    if (cv_depth_valid == 1 && detection_success)
+    {
+        unsigned short depth_nose_tmp = cv_depth_ptr->image.at<unsigned short>(cv::Point(nose[0] + 240, nose[1] + 320));
+        float depth_nose = (float)depth_nose_tmp * 0.001;
+        std::vector<float> real_nose = realDistanceTransform(nose[0], nose[1], depth_nose);
+        tf::Transform head_transform;
+        head_transform.setOrigin(tf::Vector3(depth_nose, -real_nose[0], -real_nose[1]));
+        tf::Quaternion q;
+        q.setRPY(nose_direction_new[1], nose_direction_new[2], nose_direction_new[0]);
+        head_transform.setRotation(q);
+        broadcaster->sendTransform(tf::StampedTransform(head_transform, ros::Time::now(), "camera_link", "detected_head"));
+    }
 
     tf::StampedTransform transform;
     std::vector<float> screen;
@@ -229,10 +246,11 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     catch (tf::TransformException ex)
     {
         ROS_ERROR("%s",ex.what());
-        ros::Duration(1.0).sleep();
+        // ros::Duration(1.0).sleep();
     }
     
-    if (distance == -1){
+    if (distance != -1)
+    {
         if (real_pupil_left[0] != 0)
         {
             ROS_INFO("Depth: %f", distance);
@@ -242,9 +260,6 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
             }
         }
     }
-
-    
-
 
     // // display AU
     // for (auto au : face_actions_class)
@@ -262,7 +277,6 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     //     std::cout << face_actions_class[2].first << ", " << face_actions_class[5].first << std::endl;
     //     std::cout << "Smile!!!" << std::endl;
     // }
-
 }
 
 void depthCb(const sensor_msgs::ImageConstPtr& msg)
@@ -308,6 +322,7 @@ int main(int argc, char** argv)
     face_analysis_params = std::make_shared<FaceAnalysis::FaceAnalyserParameters>(arguments);
     face_analyser = std::make_shared<FaceAnalysis::FaceAnalyser>(*face_analysis_params);
     listener = std::make_shared<tf::TransformListener>();
+    broadcaster = std::make_shared<tf::TransformBroadcaster>();
 
     if (!face_model->loaded_successfully)
     {
