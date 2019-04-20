@@ -183,7 +183,7 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     {
         cv::line(rgb_image, cv::Point( cvRound(proj_points.at<float>(0, 0)), cvRound(proj_points.at<float>(0, 1))), cv::Point( cvRound(proj_points.at<float>(1, 0)), cvRound(proj_points.at<float>(1, 1)) ), cv::Scalar(110, 220, 0), 2);
     }
-    std::cout << (int)(cvRound(proj_points.at<float>(0, 0) * 16.0)) << ", " << (int)(cvRound(proj_points.at<float>(0, 1) * 16.0 )) << ", " << (cvRound(proj_points.at<float>(1, 0) * 16.0)) << ", " <<  (cvRound(proj_points.at<float>(1, 1) * 16.0) ) << std::endl;
+    // std::cout << (int)(cvRound(proj_points.at<float>(0, 0) * 16.0)) << ", " << (int)(cvRound(proj_points.at<float>(0, 1) * 16.0 )) << ", " << (cvRound(proj_points.at<float>(1, 0) * 16.0)) << ", " <<  (cvRound(proj_points.at<float>(1, 1) * 16.0) ) << std::endl;
 
     // Displaying the tracking visualizations
     std::vector<pair<string, double>> face_actions_class = face_analyser->GetCurrentAUsClass();
@@ -201,8 +201,8 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     }
 
     // std::cout << "Gaze direction" << gazeDirection0 << ": " << gazeDirection1 << std::endl;
-    std::cout << "Pupil position:" << pupil_left << ": " << pupil_right << std::endl;
-    std::cout << "Pose position:" << nose << ": " << nose_direction_new << std::endl;
+    // std::cout << "Pupil position:" << pupil_left << ": " << pupil_right << std::endl;
+    // std::cout << "Pose position:" << nose << ": " << nose_direction_new << std::endl;
     if (cv_depth_valid == 1)
     {
         unsigned short depth_left_tmp = cv_depth_ptr->image.at<unsigned short>(cv::Point(pupil_left.x + 240, pupil_left.y + 320));
@@ -226,7 +226,8 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
         tf::Transform head_transform;
         head_transform.setOrigin(tf::Vector3(depth_nose, -real_nose[0], -real_nose[1]));
         tf::Quaternion q;
-        q.setRPY(nose_direction_new[1], nose_direction_new[2], nose_direction_new[0]);
+        cout << pose_estimate[5] << ", " << pose_estimate[3] << endl;
+        q.setRPY(-pose_estimate[4], -pose_estimate[3] - M_PI_2, pose_estimate[5]);
         head_transform.setRotation(q);
         broadcaster->sendTransform(tf::StampedTransform(head_transform, ros::Time::now(), "camera_link", "detected_head"));
     }
