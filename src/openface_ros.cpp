@@ -129,6 +129,26 @@ void Project(cv::Mat_<float>& dest, const cv::Mat_<float>& mesh, float _fx, floa
     }
 }
 
+unsigned short getMedianDepth(int row, int col)
+{
+    int window_size = 5;
+    int half_window_size = window_size/2;
+    if ((row - half_window_size < 0 || row + half_window_size >= 480) || (col - half_window_size < 0 || col + half_window_size >= 640))
+    {
+        return cv_depth_ptr->image.at<unsigned short>(cv::Point(row, col));
+    }
+    std::vector<unsigned short> _depth;
+    for (int i = row - half_window_size; i <= row + half_window_size; i++)
+    {
+        for (int j = col - half_window_size; j <= col + half_window_size; j++)
+        {
+            _depth.push_back(cv_depth_ptr->image.at<unsigned short>(cv::Point(i, j)));
+        }
+    }
+    std::nth_element(_depth.begin(), _depth.begin() + window_size*window_size/2, _depth.end());
+    return _depth[window_size*window_size/2];
+}
+
 void colorCb(const sensor_msgs::ImageConstPtr& msg)
 {
     cv_bridge::CvImagePtr cv_color_ptr;
@@ -172,8 +192,8 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     rotBox = cv::Mat(rot) * box.t();
     rotBox = rotBox.t();
     cv::Mat_<float> nose_direction = rotBox.rowRange(0, 1);
-    std::cout << rotBox.col(0) << ", " << rotBox.col(1) << ", " << rotBox.col(2) << std::endl;
-    std::cout << nose_direction << std::endl;
+    // std::cout << rotBox.col(0) << ", " << rotBox.col(1) << ", " << rotBox.col(2) << std::endl;
+    // std::cout << nose_direction << std::endl;
     cv::Mat_<float> proj_points;
     cv::Vec3f nose(cv::Vec3f(pose_estimate[0], pose_estimate[1], pose_estimate[2]));
     cv::Vec3f nose_direction_new(nose_direction.at<float>(0), nose_direction.at<float>(1), nose_direction.at<float>(2));
@@ -220,13 +240,13 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
 
     if (cv_depth_valid == 1 && detection_success)
     {
-        unsigned short depth_nose_tmp = cv_depth_ptr->image.at<unsigned short>(cv::Point(nose[0] + 240, nose[1] + 320));
+        unsigned short depth_nose_tmp = getMedianDepth(nose[0] + 240, nose[1] + 320); //cv_depth_ptr->image.at<unsigned short>(cv::Point(nose[0] + 240, nose[1] + 320));
         float depth_nose = (float)depth_nose_tmp * 0.001;
         std::vector<float> real_nose = realDistanceTransform(nose[0], nose[1], depth_nose);
         tf::Transform head_transform;
         head_transform.setOrigin(tf::Vector3(depth_nose, -real_nose[0], -real_nose[1]));
         tf::Quaternion q;
-        cout << pose_estimate[5] << ", " << pose_estimate[3] << endl;
+        // cout << pose_estimate[5] << ", " << pose_estimate[3] << endl;
         q.setRPY(-pose_estimate[4], -pose_estimate[3] - M_PI_2, pose_estimate[5]);
         head_transform.setRotation(q);
         broadcaster->sendTransform(tf::StampedTransform(head_transform, ros::Time::now(), "camera_link", "detected_head"));
@@ -237,22 +257,25 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     double distance = -1;
     try
     {
-        listener->lookupTransform("/camera_link", "/screen", ros::Time(0), transform);
-        screen.push_back(transform.getOrigin().y());
-        // std::cout << transform.getOrigin().y() << transform.getOrigin().z() << transform.getOrigin().x() << std::endl;
-        screen.push_back(transform.getOrigin().z());
-        screen.push_back(transform.getOrigin().x());
-        distance = distanceOfPointToLine(real_pupil_left, real_pupil_left_tmp, screen);
+        // listener->lookupTransform("/camera_link", "/screen", ros::Time(0), transform);
+        // screen.push_back(transform.getOrigin().y());
+        // // std::cout << transform.getOrigin().y() << transform.getOrigin().z() << transform.getOrigin().x() << std::endl;
+        // screen.push_back(transform.getOrigin().z());
+        // screen.push_back(transform.getOrigin().x());
+        // distance = distanceOfPointToLine(real_pupil_left, real_pupil_left_tmp, screen);
+
+        listener->lookupTransform("/detected_head", "/screen", ros::Time(0), transform);
+        distance = sqrt(pow(transform.getOrigin().y(), 2) + pow(transform.getOrigin().x(),2));
     }
     catch (tf::TransformException ex)
     {
-        ROS_ERROR("%s",ex.what());
+        // ROS_ERROR("%s",ex.what());
         // ros::Duration(1.0).sleep();
     }
     
     if (distance != -1)
     {
-        if (real_pupil_left[0] != 0)
+        // if (real_pupil_left[0] != 0)
         {
             ROS_INFO("Depth: %f", distance);
             if(distance < 0.20)
