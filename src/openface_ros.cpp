@@ -1,4 +1,5 @@
 #include <ros/ros.h>
+#include "std_msgs/Int64.h"
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
 #include <image_transport/image_transport.h>
@@ -31,6 +32,8 @@ std::shared_ptr<FaceAnalysis::FaceAnalyser> face_analyser;
 std::shared_ptr<Utilities::Visualizer> visualizer;
 std::shared_ptr<tf::TransformListener> listener;
 std::shared_ptr<tf::TransformBroadcaster> broadcaster;
+ros::Publisher head_status_pub;
+ros::Publisher gripper_status_pub;
 Utilities::FpsTracker fps_tracker;
 cv_bridge::CvImagePtr cv_depth_ptr;
 bool cv_depth_valid;
@@ -254,7 +257,9 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
 
     tf::StampedTransform transform;
     std::vector<float> screen;
-    double distance = -1;
+    double distance_head = -1;
+    double distance_gripper = -1;
+    std_msgs::Int64 msgs;
     try
     {
         // listener->lookupTransform("/camera_link", "/screen", ros::Time(0), transform);
@@ -263,9 +268,12 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
         // screen.push_back(transform.getOrigin().z());
         // screen.push_back(transform.getOrigin().x());
         // distance = distanceOfPointToLine(real_pupil_left, real_pupil_left_tmp, screen);
-
-        listener->lookupTransform("/detected_head", "/screen", ros::Time(0), transform);
-        distance = sqrt(pow(transform.getOrigin().y(), 2) + pow(transform.getOrigin().x(),2));
+        if (detection_success){
+            listener->lookupTransform("/detected_head", "/screen", ros::Time(0), transform);
+            distance_head = sqrt(pow(transform.getOrigin().y(), 2) + pow(transform.getOrigin().x(),2));
+            listener->lookupTransform("/detected_head", "/stp_021808TP00080_tip", ros::Time(0), transform);
+            distance_gripper = sqrt(pow(transform.getOrigin().y(), 2) + pow(transform.getOrigin().x(),2));
+        }
     }
     catch (tf::TransformException ex)
     {
@@ -273,14 +281,37 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
         // ros::Duration(1.0).sleep();
     }
     
-    if (distance != -1)
+    if (distance_head != -1)
     {
-        // if (real_pupil_left[0] != 0)
         {
-            ROS_INFO("Depth: %f", distance);
-            if(distance < 0.20)
+            ROS_INFO("Distance of head: %f", distance_head);
+            if(distance_head < 0.20)
             {
-                ROS_INFO("Looking at screen!!!");
+                ROS_INFO("Looking at head!!!");
+                msgs.data = 1;
+                head_status_pub.publish(msgs);
+            }
+            else 
+            {
+                msgs.data = 0;
+                head_status_pub.publish(msgs);
+            }
+        }
+    }
+    if (distance_gripper != -1)
+    {
+        {
+            ROS_INFO("Distance of gripper: %f", distance_gripper);
+            if(distance_gripper < 0.20)
+            {
+                ROS_INFO("Looking at gripper!!!");
+                msgs.data = 1;
+                gripper_status_pub.publish(msgs);
+            }
+            else 
+            {
+                msgs.data = 0;
+                gripper_status_pub.publish(msgs);
             }
         }
     }
@@ -347,6 +378,8 @@ int main(int argc, char** argv)
     face_analyser = std::make_shared<FaceAnalysis::FaceAnalyser>(*face_analysis_params);
     listener = std::make_shared<tf::TransformListener>();
     broadcaster = std::make_shared<tf::TransformBroadcaster>();
+    head_status_pub = n.advertise<std_msgs::Int64>("/hiro/lookat_screen", 10);
+    gripper_status_pub = n.advertise<std_msgs::Int64>("/hiro/lookat_gripper", 10);
 
     if (!face_model->loaded_successfully)
     {
