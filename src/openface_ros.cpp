@@ -21,7 +21,7 @@
 #define fy 615.962158203125
 #define cx 328.0010681152344
 #define cy 241.31031799316406
-
+#define threshold 0.30
 
 static const std::string DEPTH_OPENCV_WINDOW = "Depth Image";
 
@@ -228,9 +228,9 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     // std::cout << "Pose position:" << nose << ": " << nose_direction_new << std::endl;
     if (cv_depth_valid == 1)
     {
-        unsigned short depth_left_tmp = cv_depth_ptr->image.at<unsigned short>(cv::Point(pupil_left.x + 240, pupil_left.y + 320));
+        unsigned short depth_left_tmp = cv_depth_ptr->image.at<unsigned short>(cv::Point(pupil_left.x + cx, pupil_left.y + cy));
         depth_left = (float)depth_left_tmp * 0.001;
-        unsigned short depth_right_tmp = cv_depth_ptr->image.at<unsigned short>(cv::Point(pupil_right.x + 240, pupil_right.y + 320));
+        unsigned short depth_right_tmp = cv_depth_ptr->image.at<unsigned short>(cv::Point(pupil_right.x + cx, pupil_right.y + cy));
         depth_right = (float)depth_right_tmp * 0.001;
         // ROS_INFO("Depth: %f, %f", depth_left, depth_right);
     }
@@ -243,9 +243,11 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
 
     if (cv_depth_valid == 1 && detection_success)
     {
-        unsigned short depth_nose_tmp = getMedianDepth(nose[0] + 240, nose[1] + 320); //cv_depth_ptr->image.at<unsigned short>(cv::Point(nose[0] + 240, nose[1] + 320));
+        float nose_x = cvRound(proj_points.at<float>(0, 0));
+        float nose_y = cvRound(proj_points.at<float>(0, 1));
+        unsigned short depth_nose_tmp = getMedianDepth(nose_x, nose_y); //cv_depth_ptr->image.at<unsigned short>(cv::Point(nose[0] + 240, nose[1] + 320));
         float depth_nose = (float)depth_nose_tmp * 0.001;
-        std::vector<float> real_nose = realDistanceTransform(nose[0], nose[1], depth_nose);
+        std::vector<float> real_nose = realDistanceTransform(nose_x - cx, nose_y - cy, depth_nose);
         tf::Transform head_transform;
         head_transform.setOrigin(tf::Vector3(depth_nose, -real_nose[0], -real_nose[1]));
         tf::Quaternion q;
@@ -285,7 +287,7 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     {
         {
             ROS_INFO("Distance of head: %f", distance_head);
-            if(distance_head < 0.20)
+            if(distance_head < threshold)
             {
                 ROS_INFO("Looking at head!!!");
                 msgs.data = 1;
@@ -302,7 +304,7 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     {
         {
             ROS_INFO("Distance of gripper: %f", distance_gripper);
-            if(distance_gripper < 0.20)
+            if(distance_gripper < threshold)
             {
                 ROS_INFO("Looking at gripper!!!");
                 msgs.data = 1;
@@ -370,7 +372,7 @@ int main(int argc, char** argv)
     ros::NodeHandle n;
     image_transport::ImageTransport it(n);
     image_transport::Subscriber color_image_sub = it.subscribe("/camera/color/image_raw", 1, colorCb);
-    image_transport::Subscriber depth_image_sub = it.subscribe("/camera/depth/image_rect_raw", 1, depthCb);
+    image_transport::Subscriber depth_image_sub = it.subscribe("/camera/aligned_depth_to_color/image_raw", 1, depthCb);
 
     det_parameters = std::make_shared<LandmarkDetector::FaceModelParameters>(arguments);
     face_model = std::make_shared<LandmarkDetector::CLNF>(det_parameters->model_location);
