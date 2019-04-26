@@ -20,7 +20,7 @@
         </inertial>
     </link>
     <joint name="camera_link_base" type="fixed">
-        <origin rpy="0 0 0" xyz="0.025 0 0.25"/>
+        <origin rpy="0 0 0" xyz="0.015 0 0.275"/>
         <parent link="head"/>
         <child link="camera_link"/>
         <axis xyz="0 0 0"/>
