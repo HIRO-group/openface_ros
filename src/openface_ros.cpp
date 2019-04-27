@@ -262,6 +262,7 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     double distance_head = -1;
     double distance_gripper = -1;
     std_msgs::Int64 msgs;
+
     try
     {
         // listener->lookupTransform("/camera_link", "/screen", ros::Time(0), transform);
@@ -270,7 +271,8 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
         // screen.push_back(transform.getOrigin().z());
         // screen.push_back(transform.getOrigin().x());
         // distance = distanceOfPointToLine(real_pupil_left, real_pupil_left_tmp, screen);
-        if (detection_success){
+        if (detection_success)
+        {
             listener->lookupTransform("/detected_head", "/screen", ros::Time(0), transform);
             distance_head = sqrt(pow(transform.getOrigin().y(), 2) + pow(transform.getOrigin().x(),2));
             listener->lookupTransform("/detected_head", "/stp_021808TP00080_tip", ros::Time(0), transform);
@@ -285,37 +287,44 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
     
     if (distance_head != -1)
     {
+        // ROS_INFO("Distance of head: %f", distance_head);
+        if(distance_head < threshold)
         {
-            ROS_INFO("Distance of head: %f", distance_head);
-            if(distance_head < threshold)
-            {
-                ROS_INFO("Looking at head!!!");
-                msgs.data = 1;
-                head_status_pub.publish(msgs);
-            }
-            else 
-            {
-                msgs.data = 0;
-                head_status_pub.publish(msgs);
-            }
+            ROS_INFO("Looking at head!!!");
+            msgs.data = 1;
+            head_status_pub.publish(msgs);
+        }
+        else 
+        {
+            msgs.data = 0;
+            head_status_pub.publish(msgs);
         }
     }
+    else
+    {
+        msgs.data = 0;
+        head_status_pub.publish(msgs);
+    }
+    
     if (distance_gripper != -1)
     {
+        // ROS_INFO("Distance of gripper: %f", distance_gripper);
+        if(distance_gripper < threshold)
         {
-            ROS_INFO("Distance of gripper: %f", distance_gripper);
-            if(distance_gripper < threshold)
-            {
-                ROS_INFO("Looking at gripper!!!");
-                msgs.data = 1;
-                gripper_status_pub.publish(msgs);
-            }
-            else 
-            {
-                msgs.data = 0;
-                gripper_status_pub.publish(msgs);
-            }
+            ROS_INFO("Looking at gripper!!!");
+            msgs.data = 1;
+            gripper_status_pub.publish(msgs);
         }
+        else 
+        {
+            msgs.data = 0;
+            gripper_status_pub.publish(msgs);
+        }
+    }
+    else
+    {
+        msgs.data = 0;
+        gripper_status_pub.publish(msgs);
     }
 
     // // display AU
@@ -338,7 +347,7 @@ void colorCb(const sensor_msgs::ImageConstPtr& msg)
 
 void depthCb(const sensor_msgs::ImageConstPtr& msg)
 {
-    cv::namedWindow(DEPTH_OPENCV_WINDOW);
+    // cv::namedWindow(DEPTH_OPENCV_WINDOW);
     try
     {
         cv_depth_valid = 1;
@@ -351,7 +360,7 @@ void depthCb(const sensor_msgs::ImageConstPtr& msg)
         return;
     }
     // cv::imshow(DEPTH_OPENCV_WINDOW, cv_depth_ptr->image);
-    cv::waitKey(1);
+    // cv::waitKey(1);
 }
 
 vector<string> get_arguments(int argc, char **argv)
