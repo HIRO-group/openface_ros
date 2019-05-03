@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 2.8.3)
 project(openface_ros)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++14)
+add_compile_options(-fPIC)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -132,7 +134,20 @@ include_directories(
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/openface_ros.cpp
 # )
-
+add_library(openface_ros STATIC include/openface_ros/openface_ros.h
+                                src/openface_ros.cpp)
+add_dependencies(openface_ros         
+  ${catkin_EXPORTED_TARGETS}
+)
+target_link_libraries(openface_ros
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+)
+target_link_libraries(openface_ros LandmarkDetector boost_filesystem boost_system dlib openblas)
+target_link_libraries(openface_ros FaceAnalyser)
+target_link_libraries(openface_ros GazeAnalyser)
+target_link_libraries(openface_ros Utilities)
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -141,7 +156,21 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(openface_ros src/openface_ros.cpp)
+
+add_executable(openface_realsense src/openface_realsense.cpp)
+add_dependencies(openface_realsense         
+  ${catkin_EXPORTED_TARGETS}
+)
+target_link_libraries(openface_realsense openface_ros)
+target_link_libraries(openface_realsense
+  ${Boost_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+)
+target_link_libraries(openface_realsense LandmarkDetector boost_filesystem boost_system dlib openblas)
+target_link_libraries(openface_realsense FaceAnalyser)
+target_link_libraries(openface_realsense GazeAnalyser)
+target_link_libraries(openface_realsense Utilities)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -154,15 +183,8 @@ add_executable(openface_ros src/openface_ros.cpp)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(openface_ros
-  ${Boost_LIBRARIES}
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBRARIES}
-)
-target_link_libraries(openface_ros LandmarkDetector boost_filesystem boost_system dlib openblas)
-target_link_libraries(openface_ros FaceAnalyser)
-target_link_libraries(openface_ros GazeAnalyser)
-target_link_libraries(openface_ros Utilities)
+
+
 
 #############
 ## Install ##
