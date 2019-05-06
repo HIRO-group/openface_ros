@@ -9,7 +9,7 @@
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "openface_realsense");
-    OpenFaceRos openFaceRos("openface_realsense", fx, fy, cx, cy, threshold);
+    OpenFaceRos openFaceRos("openface_realsense", fx, fy, cx, cy, threshold, false);
     
     ros::spin();
     return 0;

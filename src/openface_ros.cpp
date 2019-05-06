@@ -4,8 +4,11 @@
 using namespace std;
 using namespace cv;
 
-OpenFaceRos::OpenFaceRos(string name, double _fx, double _fy, double _cx, double _cy, double _threshold) : args(1, "openface_ros"), n(name), it(n), det_parameters(args), face_model(det_parameters.model_location),
-                                                                           face_analysis_params(args), face_analyser(face_analysis_params), visualizer(true, false, false, false)
+OpenFaceRos::OpenFaceRos(string name, double _fx, double _fy, double _cx, double _cy, double _threshold, bool _enable_AU) : 
+                         args(1, "openface_ros"), n(name), it(n), det_parameters(args), face_model(det_parameters.model_location),
+                         face_analysis_params(args), face_analyser(face_analysis_params), visualizer(true, false, false, false), 
+                         gazeDirection0(0, 0, -1), gazeDirection1(0, 0, -1), pupil_left(0, 0, 0), pupil_right(0, 0, 0),
+                         pose_estimate(0, 0, 0, 0, 0, -1)
 {
     head_status_pub = n.advertise<std_msgs::Int64>("/hiro/lookat_screen", 10);
     gripper_status_pub = n.advertise<std_msgs::Int64>("/hiro/lookat_gripper", 10);
@@ -15,8 +18,12 @@ OpenFaceRos::OpenFaceRos(string name, double _fx, double _fy, double _cx, double
     fy = _fy;
     cx = _cx;
     cy = _cy;
+    enable_AU = _enable_AU;
     threshold = _threshold;
     cv_depth_valid = 0;
+    detection_success = false;
+    distance_head = -1;
+    distance_gripper = -1;
 }
 
 OpenFaceRos::~OpenFaceRos()
@@ -149,14 +156,17 @@ void OpenFaceRos::colorCb(const sensor_msgs::ImageConstPtr& msg)
         ROS_ERROR("cv_bridge exception: %s", e.what());
         return;
     }
+
+    faceDetection(cv_color_ptr);
+}
+
+void OpenFaceRos::faceDetection(cv_bridge::CvImagePtr cv_color_ptr)
+{
     Mat grayscale_image;
     Mat rgb_image = cv_color_ptr->image;
     cv::cvtColor(rgb_image, grayscale_image, cv::COLOR_BGR2GRAY);
-    bool detection_success = LandmarkDetector::DetectLandmarksInVideo(rgb_image, face_model, det_parameters, grayscale_image);
-    Point3f gazeDirection0(0, 0, -1);
-    Point3f gazeDirection1(0, 0, -1);
-    Point3f pupil_left(0, 0, 0);
-    Point3f pupil_right(0, 0, 0);
+    detection_success = LandmarkDetector::DetectLandmarksInVideo(rgb_image, face_model, det_parameters, grayscale_image);
+
     // If tracking succeeded and we have an eye model, estimate gaze
     if (detection_success && face_model.eye_model)
     {
@@ -164,41 +174,34 @@ void OpenFaceRos::colorCb(const sensor_msgs::ImageConstPtr& msg)
         GazeAnalysis::EstimateGaze(face_model, gazeDirection1, fx, fy, cx, cy, false);
         calculatePupil(pupil_left, pupil_right, LandmarkDetector::Calculate3DEyeLandmarks(face_model, fx, fy, cx, cy));
     }
-    Mat sim_warped_img;
-    Mat_<double> hog_descriptor; int num_hog_rows = 0, num_hog_cols = 0;    
-    face_analyser.AddNextFrame(rgb_image, face_model.detected_landmarks, face_model.detection_success, ros::Time::now().toSec(), true);
-    face_analyser.GetLatestAlignedFace(sim_warped_img);
-    face_analyser.GetLatestHOG(hog_descriptor, num_hog_rows, num_hog_cols);
+
     // Work out the pose of the head from the tracked model
-    Vec6f pose_estimate = LandmarkDetector::GetPose(face_model, fx, fy, cx, cy);
-    Matx33f rot = Euler2RotationMatrix(cv::Vec3f(pose_estimate[3], pose_estimate[4], pose_estimate[5]));
-    float boxVerts[] = { 0, 0, -1};
-    Mat_<float> box = cv::Mat(1, 3, CV_32F, boxVerts).clone();
-    Mat_<float> rotBox;
-    rotBox = cv::Mat(rot) * box.t();
-    rotBox = rotBox.t();
-    cv::Mat_<float> nose_direction = rotBox.rowRange(0, 1);
-    // std::cout << rotBox.col(0) << ", " << rotBox.col(1) << ", " << rotBox.col(2) << std::endl;
-    // std::cout << nose_direction << std::endl;
-    Mat_<float> proj_points;
-    Vec3f nose(cv::Vec3f(pose_estimate[0], pose_estimate[1], pose_estimate[2]));
-    Vec3f nose_direction_new(nose_direction.at<float>(0), nose_direction.at<float>(1), nose_direction.at<float>(2));
-    Mat_<float> mesh_0 = (cv::Mat_<float>(2, 3) << nose[0], nose[1], nose[2], nose[0]+nose_direction_new[0]*70.0, nose[1]+nose_direction_new[1]*70.0, nose[2]+nose_direction_new[2]*70.0);
-    Project(proj_points, mesh_0, fx, fy, cx, cy);
+    pose_estimate = LandmarkDetector::GetPose(face_model, fx, fy, cx, cy);
+    vector<Point> nose = getNose();
     if (detection_success && face_model.eye_model)
     {
-        line(rgb_image, Point( cvRound(proj_points.at<float>(0, 0)), cvRound(proj_points.at<float>(0, 1))), Point( cvRound(proj_points.at<float>(1, 0)), cvRound(proj_points.at<float>(1, 1)) ), Scalar(110, 220, 0), 2);
+        line(rgb_image, nose[0], nose[1], Scalar(110, 220, 0), 2);
     }
-    // std::cout << (int)(cvRound(proj_points.at<float>(0, 0) * 16.0)) << ", " << (int)(cvRound(proj_points.at<float>(0, 1) * 16.0 )) << ", " << (cvRound(proj_points.at<float>(1, 0) * 16.0)) << ", " <<  (cvRound(proj_points.at<float>(1, 1) * 16.0) ) << std::endl;
-
+    
     // Displaying the tracking visualizations
-    vector<pair<string, double>> face_actions_class = face_analyser.GetCurrentAUsClass();
-
     visualizer.SetImage(rgb_image, fx, fy, cx, cy);
     visualizer.SetObservationLandmarks(face_model.detected_landmarks, face_model.detection_certainty, face_model.GetVisibilities());
     visualizer.SetObservationPose(pose_estimate, face_model.detection_certainty);
     visualizer.SetObservationGaze(gazeDirection0, gazeDirection1, LandmarkDetector::CalculateAllEyeLandmarks(face_model), LandmarkDetector::Calculate3DEyeLandmarks(face_model, fx, fy, cx, cy), face_model.detection_certainty);
-    visualizer.SetObservationActionUnits(face_analyser.GetCurrentAUsReg(), face_actions_class);
+    
+    if (enable_AU) 
+    {
+        Mat sim_warped_img;
+        Mat_<double> hog_descriptor; 
+        int num_hog_rows = 0, num_hog_cols = 0;    
+        face_analyser.AddNextFrame(rgb_image, face_model.detected_landmarks, face_model.detection_success, ros::Time::now().toSec(), true);
+        face_analyser.GetLatestAlignedFace(sim_warped_img);
+        face_analyser.GetLatestHOG(hog_descriptor, num_hog_rows, num_hog_cols);
+        vector<pair<string, double>> face_actions_class = face_analyser.GetCurrentAUsClass();
+        visualizer.SetObservationActionUnits(face_analyser.GetCurrentAUsReg(), face_actions_class);
+        checkAU(face_actions_class);
+    }
+
     char character_press = visualizer.ShowObservation();
     // restart the tracker
     if (character_press == 'r')
@@ -206,52 +209,36 @@ void OpenFaceRos::colorCb(const sensor_msgs::ImageConstPtr& msg)
         face_model.Reset();
     }
 
-    // std::cout << "Gaze direction" << gazeDirection0 << ": " << gazeDirection1 << std::endl;
-    // std::cout << "Pupil position:" << pupil_left << ": " << pupil_right << std::endl;
-    // std::cout << "Pose position:" << nose << ": " << nose_direction_new << std::endl;
     if (cv_depth_valid == 1)
     {
         unsigned short depth_left_tmp = cv_depth_ptr->image.at<unsigned short>(cv::Point(pupil_left.x + cx, pupil_left.y + cy));
         depth_left = (float)depth_left_tmp * 0.001;
         unsigned short depth_right_tmp = cv_depth_ptr->image.at<unsigned short>(cv::Point(pupil_right.x + cx, pupil_right.y + cy));
         depth_right = (float)depth_right_tmp * 0.001;
-        // ROS_INFO("Depth: %f, %f", depth_left, depth_right);
     }
     vector<float> real_pupil_left = realDistanceTransform(pupil_left.x, pupil_left.y, depth_left);
     vector<float> real_pupil_left_tmp{real_pupil_left[0]-gazeDirection0.x, real_pupil_left[1]-gazeDirection0.y, real_pupil_left[2]-gazeDirection0.z};
     vector<float> real_pupil_right = realDistanceTransform(pupil_right.x, pupil_right.y, depth_right);
-    // std::cout << "Real left pupil position: " << real_pupil_left[0] << ", " << real_pupil_left[1] << ", " << depth_left << std::endl;
-    // std::cout << "Real right pupil position: " << real_pupil_right[0] << ", " << real_pupil_right[1] << ", " << depth_right << std::endl;
 
     if (cv_depth_valid == 1 && detection_success)
     {
-        float nose_x = cvRound(proj_points.at<float>(0, 0));
-        float nose_y = cvRound(proj_points.at<float>(0, 1));
-        unsigned short depth_nose_tmp = getMedianDepth(nose_x, nose_y); //cv_depth_ptr->image.at<unsigned short>(cv::Point(nose[0] + 240, nose[1] + 320));
+        unsigned short depth_nose_tmp = getMedianDepth(nose[0].x, nose[0].y);
         float depth_nose = (float)depth_nose_tmp * 0.001;
-        vector<float> real_nose = realDistanceTransform(nose_x - cx, nose_y - cy, depth_nose);
+        vector<float> real_nose = realDistanceTransform(nose[0].x - cx, nose[0].y - cy, depth_nose);
         tf::Transform head_transform;
         head_transform.setOrigin(tf::Vector3(depth_nose, -real_nose[0], -real_nose[1]));
         tf::Quaternion q;
-        // cout << pose_estimate[5] << ", " << pose_estimate[3] << endl;
         q.setRPY(-pose_estimate[4], -pose_estimate[3] - M_PI_2, pose_estimate[5]);
         head_transform.setRotation(q);
         broadcaster.sendTransform(tf::StampedTransform(head_transform, ros::Time::now(), "camera_link", "detected_head"));
     }
     tf::StampedTransform transform;
-    vector<float> screen;
-    double distance_head = -1;
-    double distance_gripper = -1;
-    std_msgs::Int64 msgs;
 
+    distance_head = -1;
+    distance_gripper = -1;
+    std_msgs::Int64 msgs;
     try
     {
-        // listener.lookupTransform("/camera_link", "/screen", ros::Time(0), transform);
-        // screen.push_back(transform.getOrigin().y());
-        // // std::cout << transform.getOrigin().y() << transform.getOrigin().z() << transform.getOrigin().x() << std::endl;
-        // screen.push_back(transform.getOrigin().z());
-        // screen.push_back(transform.getOrigin().x());
-        // distance = distanceOfPointToLine(real_pupil_left, real_pupil_left_tmp, screen);
         if (detection_success)
         {
             listener.lookupTransform("/detected_head", "/screen", ros::Time(0), transform);
@@ -262,12 +249,93 @@ void OpenFaceRos::colorCb(const sensor_msgs::ImageConstPtr& msg)
     }
     catch (tf::TransformException ex)
     {
-        // ROS_ERROR("%s",ex.what());
-        // ros::Duration(1.0).sleep();
+
     }
+    checkGaze();
+}
+
+vector<Point> OpenFaceRos::getNose()
+{
+    Vec3f nose = cv::Vec3f(pose_estimate[0], pose_estimate[1], pose_estimate[2]);
+    Matx33f rot = Euler2RotationMatrix(cv::Vec3f(pose_estimate[3], pose_estimate[4], pose_estimate[5]));
+    float boxVerts[] = { 0, 0, -1};
+    Mat_<float> box = cv::Mat(1, 3, CV_32F, boxVerts).clone();
+    Mat_<float> rotBox;
+    rotBox = cv::Mat(rot) * box.t();
+    rotBox = rotBox.t();
+    cv::Mat_<float> nose_direction = rotBox.rowRange(0, 1);
+    Mat_<float> proj_points;
+    Vec3f nose_direction_new = cv::Vec3f(nose_direction.at<float>(0), nose_direction.at<float>(1), nose_direction.at<float>(2));
+    Mat_<float> mesh_0 = (cv::Mat_<float>(2, 3) << nose[0], nose[1], nose[2], nose[0]+nose_direction_new[0]*70.0, nose[1]+nose_direction_new[1]*70.0, nose[2]+nose_direction_new[2]*70.0);
+    Project(proj_points, mesh_0, fx, fy, cx, cy);
+    vector<Point> nose_2d{ Point( cvRound(proj_points.at<float>(0, 0)), cvRound(proj_points.at<float>(0, 1)) ), Point( cvRound(proj_points.at<float>(1, 0)), cvRound(proj_points.at<float>(1, 1)) )};
+    return nose_2d;
+}
+
+vector<Point> OpenFaceRos::getLeftPupil()
+{
+    Vec3f leftPupil = cv::Vec3f(pupil_left.x, pupil_left.y, pupil_left.z);
+    Matx33f rot = Euler2RotationMatrix(cv::Vec3f(gazeDirection0.x, gazeDirection0.y, gazeDirection0.z));
+    float boxVerts[] = { 0, 0, -1};
+    Mat_<float> box = cv::Mat(1, 3, CV_32F, boxVerts).clone();
+    Mat_<float> rotBox;
+    rotBox = cv::Mat(rot) * box.t();
+    rotBox = rotBox.t();
+    cv::Mat_<float> gaze_direction = rotBox.rowRange(0, 1);
+    Mat_<float> proj_points;
+    Vec3f gaze_direction_new = cv::Vec3f(gaze_direction.at<float>(0), gaze_direction.at<float>(1), gaze_direction.at<float>(2));
+    Mat_<float> mesh_0 = (cv::Mat_<float>(2, 3) << leftPupil[0], leftPupil[1], leftPupil[2], leftPupil[0]+gaze_direction_new[0]*70.0, leftPupil[1]+gaze_direction_new[1]*70.0, leftPupil[2]+gaze_direction_new[2]*70.0);
+    Project(proj_points, mesh_0, fx, fy, cx, cy);
+    vector<Point> left_pupil_2d{ Point( cvRound(proj_points.at<float>(0, 0)), cvRound(proj_points.at<float>(0, 1)) ), Point( cvRound(proj_points.at<float>(1, 0)), cvRound(proj_points.at<float>(1, 1)) )};
+    return left_pupil_2d;
+}
+
+vector<Point> OpenFaceRos::getRightPupil()
+{
+    Vec3f rightPupil = cv::Vec3f(pupil_right.x, pupil_right.y, pupil_right.z);
+    Matx33f rot = Euler2RotationMatrix(cv::Vec3f(gazeDirection1.x, gazeDirection1.y, gazeDirection1.z));
+    float boxVerts[] = {0, 0, -1};
+    Mat_<float> box = cv::Mat(1, 3, CV_32F, boxVerts).clone();
+    Mat_<float> rotBox;
+    rotBox = cv::Mat(rot) * box.t();
+    rotBox = rotBox.t();
+    cv::Mat_<float> gaze_direction = rotBox.rowRange(0, 1);
+    Mat_<float> proj_points;
+    Vec3f gaze_direction_new = cv::Vec3f(gaze_direction.at<float>(0), gaze_direction.at<float>(1), gaze_direction.at<float>(2));
+    Mat_<float> mesh_0 = (cv::Mat_<float>(2, 3) << rightPupil[0], rightPupil[1], rightPupil[2], rightPupil[0]+gaze_direction_new[0]*70.0, rightPupil[1]+gaze_direction_new[1]*70.0, rightPupil[2]+gaze_direction_new[2]*70.0);
+    Project(proj_points, mesh_0, fx, fy, cx, cy);
+    vector<Point> right_pupil_2d{ Point( cvRound(proj_points.at<float>(0, 0)), cvRound(proj_points.at<float>(0, 1)) ), Point( cvRound(proj_points.at<float>(1, 0)), cvRound(proj_points.at<float>(1, 1)) )};
+    return right_pupil_2d;
+}
+
+void OpenFaceRos::checkAU(vector<pair<string, double>> face_actions_class)
+{
+    if (enable_AU)
+    {   
+        // // print out AUs
+        // for (auto au : face_actions_class)
+        // {
+        //     std::cout << au.first << ": " << au.second << std::endl;
+        // }
+
+        if (face_actions_class[0].second == 1)
+        {
+            std::cout << face_actions_class[0].first << std::endl;
+            std::cout << "Angry!!!" << std::endl;
+        }
+        else if (face_actions_class[2].second == 1 && face_actions_class[5].second == 1)
+        {
+            std::cout << face_actions_class[2].first << ", " << face_actions_class[5].first << std::endl;
+            std::cout << "Smile!!!" << std::endl;
+        }
+    }
+}
+
+void OpenFaceRos::checkGaze()
+{   
+    std_msgs::Int64 msgs;
     if (distance_head != -1)
     {
-        // ROS_INFO("Distance of head: %f", distance_head);
         if(distance_head < threshold)
         {
             ROS_INFO("Looking at head!!!");
@@ -288,7 +356,6 @@ void OpenFaceRos::colorCb(const sensor_msgs::ImageConstPtr& msg)
     
     if (distance_gripper != -1)
     {
-        // ROS_INFO("Distance of gripper: %f", distance_gripper);
         if(distance_gripper < threshold)
         {
             ROS_INFO("Looking at gripper!!!");
@@ -306,22 +373,6 @@ void OpenFaceRos::colorCb(const sensor_msgs::ImageConstPtr& msg)
         msgs.data = 0;
         gripper_status_pub.publish(msgs);
     }
-    // // display AU
-    // for (auto au : face_actions_class)
-    // {
-    //     std::cout << au.first << ": " << au.second << std::endl;
-    // }
-
-    // if (face_actions_class[0].second == 1)
-    // {
-    //     std::cout << face_actions_class[0].first << std::endl;
-    //     std::cout << "Angry!!!" << std::endl;
-    // }
-    // else if (face_actions_class[2].second == 1 && face_actions_class[5].second == 1)
-    // {
-    //     std::cout << face_actions_class[2].first << ", " << face_actions_class[5].first << std::endl;
-    //     std::cout << "Smile!!!" << std::endl;
-    // }
 }
 
 void OpenFaceRos::depthCb(const sensor_msgs::ImageConstPtr& msg)

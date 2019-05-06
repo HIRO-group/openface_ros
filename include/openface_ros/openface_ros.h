@@ -28,6 +28,11 @@ private:
     FaceAnalysis::FaceAnalyserParameters face_analysis_params;
     FaceAnalysis::FaceAnalyser face_analyser;
     Utilities::Visualizer visualizer;
+    cv::Point3f gazeDirection0;
+    cv::Point3f gazeDirection1;
+    cv::Point3f pupil_left;
+    cv::Point3f pupil_right;
+    cv::Vec6f pose_estimate;
 
     ros::Publisher head_status_pub;
     ros::Publisher gripper_status_pub;
@@ -37,19 +42,30 @@ private:
     image_transport::Subscriber depth_image_sub;
     cv_bridge::CvImagePtr cv_depth_ptr;
 
-    bool cv_depth_valid;
-    float depth_left, depth_right;
     double fx;
     double fy;
     double cx;
     double cy;
     double threshold;
+    bool enable_AU;
 
+    bool cv_depth_valid;
+    float depth_left, depth_right;
+    double distance_head;
+    double distance_gripper;
+    bool detection_success;
+    
     void colorCb(const sensor_msgs::ImageConstPtr& msg);
     void depthCb(const sensor_msgs::ImageConstPtr& msg);
+    
+    void checkGaze();
+    void checkAU(std::vector<std::pair<std::string, double>> face_actions_class);
+    void faceDetection(cv_bridge::CvImagePtr cv_color_ptr);
     void calculatePupil(cv::Point3f& pupil_left, cv::Point3f& pupil_right, const std::vector<cv::Point3f>& eye_landmarks3d);
     void Project(cv::Mat_<float>& dest, const cv::Mat_<float>& mesh, float _fx, float _fy, float _cx, float _cy);
-
+    std::vector<cv::Point> getNose();
+    std::vector<cv::Point> getLeftPupil();
+    std::vector<cv::Point> getRightPupil();
     std::vector<float> realDistanceTransform(float distance_x, float distance_y, float depth);
     std::vector<std::string> get_arguments(int argc, char **argv);
 
@@ -61,7 +77,7 @@ private:
 
 
 public:
-    OpenFaceRos(std::string name, double fx, double fy, double cx, double cy, double threshold);
+    OpenFaceRos(std::string name, double fx, double fy, double cx, double cy, double threshold, bool enable_AU);
     ~OpenFaceRos();
     
     // void move(moveit_msgs::RobotTrajectory& traj);
