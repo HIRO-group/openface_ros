@@ -14,15 +14,7 @@ Guide for installing, compiling and testing the openface_ros package in your ROS
 
 #### System Dependencies
 
-This repository needs `openface` and `realsense`.
-
-##### Openface
-
-To install, compile and test openface package, please refer to the [installation tutorial](https://github.com/TadasBaltrusaitis/OpenFace/wiki) in openface github wiki page.
-
-##### Realsense
-
-To install, compile and test realsense package, please refer to the [installation tutorial](https://github.com/IntelRealSense/realsense-ros) in realsense github page.
+This repository needs `openface` and `realsense`. To install, compile and test openface package, please refer to the [installation tutorial](https://github.com/TadasBaltrusaitis/OpenFace/wiki) in openface github wiki page. Also, for realsense package, please refer to the [installation tutorial](https://github.com/IntelRealSense/realsense-ros) in realsense github page.
 
 #### ROS Dependencies
 
@@ -44,3 +36,4 @@ After cloning and building this repo, you can run `roslaunch openface_ros openfa
 * `OpenFaceRos constructor`: For constructor, we need focal length, center of realsense, threshold of distance betwenn gaze vector and target and a flag enable action unit or not.
 
 * `getNose, getLeftPupil, getRightPupil`: These three function will give you position of nose, left pupil and right pupil individually. The location is pixel-based, which means location in showing image.
+
