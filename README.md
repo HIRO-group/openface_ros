@@ -28,17 +28,17 @@ We use the new Catkin Command Line Tools `catkin_tools`, a Python package that p
 sudo apt-get install python-catkin-tools
 ```
 
-## Execution on the robot
+### Execution on the robot
 
-### Initial steps 
+#### Initial steps 
 
  1. Turn on the robot. Wait for the robot to finish its start-up phase.
  2. Be sure that the system you're running the code has access to the Sawyer robot. This is usually done by running the `intera.sh` script that should be provided in your Sawyer installation. See [here](http://sdk.rethinkrobotics.com/intera/SDK_Shell) for more info.
  3. Connect Realsense camera with USB 3.0 port in your computer.
 
-### How to run this package
+#### How to run this package
 
-After cloning and building this repo, you need to launch the enviroment we need, which include realsence and sending a new urdf into sawyer robot. Then, you can run the test program in this package called `openface_realsense`. To implement things above, you can run the commands below.
+After cloning and building this repo, you need to launch the enviroment we need, which include realsence and sending a new urdf into Sawyer robot. Then, you can run the test program in this package called `openface_realsense`. To implement things above, you can run the commands below.
 
 ```sh
 roslaunch openface_ros openface_ros.launch
@@ -50,3 +50,20 @@ rosrun openface_ros openface_realsense
 * `OpenFaceRos constructor`: For constructor, we need focal length, center of realsense, threshold of distance betwenn gaze vector and target and a flag enable action unit or not.
 
 * `getNose, getLeftPupil, getRightPupil`: These three function will give you position of nose, left pupil and right pupil individually. The location is pixel-based, which means location in showing image.
+
+## More informations
+
+In this Package, we have some folders that normal pakcage won't have. Here will include more information for those folders.
+
+### Meshes
+
+This folder is for CAD files that we can show different objects (realsense) in simulators like rviz and gazebo. For now, we only have model for realsense camera, but in the future we might need more files so we create this folder.
+
+### Sending urdf
+
+Because we want an extra realsense model mount on Sawyer robot, we need to add an extra link and joint into our urdf. To do this, we use `send_urdf_fragment` from (intera_sdk)[https://github.com/RethinkRobotics/intera_sdk/tree/master/intera_interface/scripts], which can send exclusion links and joints to Sawyer robot. 
+
+
+In launch file, we called `send_urdf_fragment` with our urdf file in urdf folder to connect realsense with Sawyer.
+
+
