@@ -22,7 +22,7 @@ This repository supports `ROS kinetic`. [Here](https://hiro-group.ronc.one/ros_k
 
 ##### Catkin Tools
 
-We use the new Catkin Command Line Tools `catkin_tools`, a Python package that provides command line tools for working with the catkin meta build system and catkin workspaces. This package was announced in **March 2015** and is still in beta, but we didn't experience any problem with it. The following instructions apply to this new package, even though the repository can be used and compile with the old `catkin_make` without issues.
+We use the new Catkin Command Line Tools `catkin_tools`, a Python package that provides command line tools for working with the catkin meta build system and catkin workspaces. The following instructions apply to this new package, even though the repository can be used and compile with the old `catkin_make` without issues.
 
 ```sh
 sudo apt-get install python-catkin-tools
@@ -32,13 +32,18 @@ sudo apt-get install python-catkin-tools
 
 ### Initial steps 
 
- 0. Turn on the robot. Wait for the robot to finish its start-up phase.
- 1. Be sure that the system you're running the code has access to the Sawyer robot. This is usually done by running the `intera.sh` script that should be provided in your Sawyer installation. See [here](http://sdk.rethinkrobotics.com/intera/SDK_Shell) for more info.
- 2. Connect Realsense camera with USB 3.0 port in your computer.
+ 1. Turn on the robot. Wait for the robot to finish its start-up phase.
+ 2. Be sure that the system you're running the code has access to the Sawyer robot. This is usually done by running the `intera.sh` script that should be provided in your Sawyer installation. See [here](http://sdk.rethinkrobotics.com/intera/SDK_Shell) for more info.
+ 3. Connect Realsense camera with USB 3.0 port in your computer.
 
 ### How to run this package
 
-After cloning and building this repo, you can run `roslaunch openface_ros openface_ros.launch` to launch all the setting we need. And then run `rosrun openface_ros openface_realsense` to start main program.
+After cloning and building this repo, you need to launch the enviroment we need, which include realsence and sending a new urdf into sawyer robot. Then, you can run the test program in this package called `openface_realsense`. To implement things above, you can run the commands below.
+
+```sh
+roslaunch openface_ros openface_ros.launch
+rosrun openface_ros openface_realsense
+```
 
 ## Functions of OpenFaceRos
 
