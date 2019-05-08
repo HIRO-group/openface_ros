@@ -45,7 +45,7 @@ roslaunch openface_ros openface_ros.launch
 rosrun openface_ros openface_realsense
 ```
 
-In `openface_realsense`, we first initialize an OpenFaceRos object, and it will detect humans gaze and emotions and pop out a screen with pose box on user's face.
+In `openface_realsense`, we first initialize an OpenFaceRos object, and it will detect human's gaze and emotion and also pop out a screen with pose, gaze firection on user's face.
 
 ## Functions of OpenFaceRos
 
