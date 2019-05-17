@@ -45,6 +45,7 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}/boost
 )
 
 add_library(openface_ros STATIC include/openface_ros/openface_ros.h
