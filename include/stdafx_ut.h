@@ -12,20 +12,17 @@
 
 // Precompiled headers stuff
 
-#ifndef __STDAFX_h_
-#define __STDAFX_h_
+#ifndef __STDAFX_UT_h_
+#define __STDAFX_UT_h_
 
 // OpenCV includes
 #include <opencv2/core/core.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/objdetect.hpp>
-#include <opencv2/calib3d.hpp>
-#include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
-// dlib dependencies for face detection
-#include <dlib/image_processing/frontal_face_detector.h>
+// For FHOG visualisation
 #include <dlib/opencv.h>
+#include <dlib/image_processing/frontal_face_detector.h>
 
 // C++ standard stuff
 #include <stdio.h>
@@ -33,12 +30,20 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <locale>
+#include <iomanip>
 
 #include <vector>
+#include <queue>
 #include <map>
+#include <set>
 
-#define _USE_MATH_DEFINES
-#include <cmath>
+// For sorting
+#include <algorithm>
+
+// For threading and timing
+#include <chrono>
+#include <ctime>
 
 // Filesystem stuff
 // It can either be in std filesystem (C++17), or in experimental/filesystem (partial C++17 support) or in boost
@@ -53,22 +58,5 @@ namespace fs = std::filesystem;
 #include <experimental/filesystem>
 namespace fs = std::filesystem;
 #endif
-
-// OpenBLAS stuff
-
-#include <openblas_config.h>
-// Instead of including cblas.h and f77blas.h (the definitions from OpenBLAS and other BLAS libraries differ, declare the required OpenBLAS functionality here)
-#ifdef __cplusplus
-extern "C" {
-	/* Assume C declarations for C++ */
-#endif  /* __cplusplus */
-
-	/*Set the number of threads on runtime.*/
-	void openblas_set_num_threads(int num_threads);
-
-	void sgemm_(char *, char *, blasint *, blasint *, blasint *, float *,
-		float  *, blasint *, float  *, blasint *, float  *, float  *, blasint *);
-}
-
 
 #endif

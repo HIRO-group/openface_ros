@@ -38,8 +38,6 @@
 
 #include <vector>
 
-using namespace std;
-
 namespace LandmarkDetector
 {
 
@@ -59,20 +57,20 @@ struct FaceModelParameters
 	float validation_boundary;
 
 	// Used when tracking is going well
-	vector<int> window_sizes_small;
+	std::vector<int> window_sizes_small;
 
 	// Used when initialising or tracking fails
-	vector<int> window_sizes_init;
+	std::vector<int> window_sizes_init;
 	
 	// Used for the current frame
-	vector<int> window_sizes_current;
+	std::vector<int> window_sizes_current;
 	
 	// How big is the tracking template that helps with large motions
 	float face_template_scale;	
 	bool use_face_template;
 
 	// Where to load the model from
-	string model_location;
+	std::string model_location;
 	
 	// this is used for the smooting of response maps (KDE sigma)
 	float sigma;
@@ -95,8 +93,8 @@ struct FaceModelParameters
 	// MTCNN detector is much more accurate that the other two, and is even suitable for profile faces, but it is somewhat slower
 	enum FaceDetector{HAAR_DETECTOR, HOG_SVM_DETECTOR, MTCNN_DETECTOR};
 
-	string haar_face_detector_location;
-	string mtcnn_face_detector_location;
+	std::string haar_face_detector_location;
+	std::string mtcnn_face_detector_location;
 	FaceDetector curr_face_detector;
 
 	// Should the model be refined hierarchically (if available)
@@ -107,7 +105,7 @@ struct FaceModelParameters
 
 	FaceModelParameters();
 
-	FaceModelParameters(vector<string> &arguments);
+	FaceModelParameters(std::vector<std::string> &arguments);
 
 	private:
 		void init();

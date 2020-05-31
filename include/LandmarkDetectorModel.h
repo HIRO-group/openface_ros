@@ -49,8 +49,6 @@
 #include "LandmarkDetectorParameters.h"
 #include "FaceDetectorMTCNN.h"
 
-using namespace std;
-
 namespace LandmarkDetector
 {
 
@@ -79,10 +77,10 @@ public:
 	cv::Vec6f           params_global;
 
 	// A collection of hierarchical CLNF models that can be used for refinement
-	vector<CLNF>					hierarchical_models;
-	vector<string>					hierarchical_model_names;
-	vector<vector<pair<int,int>>>	hierarchical_mapping;
-	vector<FaceModelParameters>		hierarchical_params;
+	std::vector<CLNF>								hierarchical_models;
+	std::vector<std::string>						hierarchical_model_names;
+	std::vector<std::vector<std::pair<int,int>>>	hierarchical_mapping;
+	std::vector<FaceModelParameters>				hierarchical_params;
 
 	//==================== Helpers for face detection and landmark detection validation =========================================
 
@@ -90,13 +88,13 @@ public:
 
 	// Haar cascade classifier for face detection
 	cv::CascadeClassifier   face_detector_HAAR;
-	string                  haar_face_detector_location;
+	std::string             haar_face_detector_location;
 	
 	// A HOG SVM-struct based face detector
 	dlib::frontal_face_detector face_detector_HOG;
 
 	FaceDetectorMTCNN		face_detector_MTCNN;
-	string                  mtcnn_face_detector_location;
+	std::string             mtcnn_face_detector_location;
 
 	// Validate if the detected landmarks are correct using an SVR regressor
 	DetectionValidator	landmark_validator; 
@@ -114,7 +112,7 @@ public:
 	bool				eye_model;
 
 	// the triangulation per each view (for drawing purposes only)
-	vector<cv::Mat_<int> >	triangulations;
+	std::vector<cv::Mat_<int> >	triangulations;
 	
 	//===========================================================================
 	// Member variables that retain the state of the tracking (reflecting the state of the lastly tracked (detected) image
@@ -146,7 +144,7 @@ public:
 	CLNF();
 
 	// Constructor from a model file
-	CLNF(string fname);
+	CLNF(std::string fname);
 	
 	// Copy constructor (makes a deep copy of the detector)
 	CLNF(const CLNF& other);
@@ -183,25 +181,30 @@ public:
 	void Reset(double x, double y);
 
 	// Reading the model in
-	void Read(string name);
+	void Read(std::string name);
 	
 private:
 
 	// Helper reading function
-	bool Read_CLNF(string clnf_location);
+	bool Read_CLNF(std::string clnf_location);
 
 	// the speedup of RLMS using precalculated KDE responses (described in Saragih 2011 RLMS paper)
-	map<int, cv::Mat_<float> >		kde_resp_precalc;
+	std::map<int, cv::Mat_<float> >		kde_resp_precalc;
 
 	// The model fitting: patch response computation and optimisation steps
     bool Fit(const cv::Mat_<float>& intensity_image, const std::vector<int>& window_sizes, const FaceModelParameters& parameters);
 
 	// Mean shift computation that uses precalculated kernel density estimators (the one actually used)
-	void NonVectorisedMeanShift_precalc_kde(cv::Mat_<float>& out_mean_shifts, const vector<cv::Mat_<float> >& patch_expert_responses, const cv::Mat_<float> &dxs, const cv::Mat_<float> &dys, int resp_size, float a, int scale, int view_id, map<int, cv::Mat_<float> >& mean_shifts);
+	void NonVectorisedMeanShift_precalc_kde(cv::Mat_<float>& out_mean_shifts, const std::vector<cv::Mat_<float> >& patch_expert_responses, 
+		const cv::Mat_<float> &dxs, const cv::Mat_<float> &dys, int resp_size, float a, int scale, int view_id, 
+		std::map<int, cv::Mat_<float> >& mean_shifts);
 
 	// The actual model optimisation (update step), returns the model likelihood
-    float NU_RLMS(cv::Vec6f& final_global, cv::Mat_<float>& final_local, const vector<cv::Mat_<float> >& patch_expert_responses, const cv::Vec6f& initial_global, const cv::Mat_<float>& initial_local,
-		          const cv::Mat_<float>& base_shape, const cv::Matx22f& sim_img_to_ref, const cv::Matx22f& sim_ref_to_img, int resp_size, int view_idx, bool rigid, int scale, cv::Mat_<float>& landmark_lhoods, const FaceModelParameters& parameters, bool compute_lhood);
+    float NU_RLMS(cv::Vec6f& final_global, cv::Mat_<float>& final_local, const std::vector<cv::Mat_<float> >& patch_expert_responses, 
+				  const cv::Vec6f& initial_global, const cv::Mat_<float>& initial_local,
+		          const cv::Mat_<float>& base_shape, const cv::Matx22f& sim_img_to_ref, 
+				  const cv::Matx22f& sim_ref_to_img, int resp_size, int view_idx, bool rigid, int scale, 
+		          cv::Mat_<float>& landmark_lhoods, const FaceModelParameters& parameters, bool compute_lhood);
 
 	// Generating the weight matrix for the Weighted least squares
 	void GetWeightMatrix(cv::Mat_<float>& WeightMatrix, int scale, int view_id, const FaceModelParameters& parameters);

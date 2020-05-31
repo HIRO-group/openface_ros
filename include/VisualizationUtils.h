@@ -33,11 +33,7 @@
 
 #ifndef VISUALIZATION_UTILS_H
 #define VISUALIZATION_UTILS_H
-
-#include <opencv2/core/core.hpp>
-
-#include <vector>
-#include <queue>
+#include <stdafx_ut.h>
 
 namespace Utilities
 {

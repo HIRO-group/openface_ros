@@ -12,8 +12,8 @@
 
 // Precompiled headers stuff
 
-#ifndef __STDAFX_h_
-#define __STDAFX_h_
+#ifndef __STDAFX_FA_h_
+#define __STDAFX_FA_h_
 
 // OpenCV includes
 #include <opencv2/core/core.hpp>
@@ -53,22 +53,5 @@ namespace fs = std::filesystem;
 #include <experimental/filesystem>
 namespace fs = std::filesystem;
 #endif
-
-// OpenBLAS stuff
-
-#include <openblas_config.h>
-// Instead of including cblas.h and f77blas.h (the definitions from OpenBLAS and other BLAS libraries differ, declare the required OpenBLAS functionality here)
-#ifdef __cplusplus
-extern "C" {
-	/* Assume C declarations for C++ */
-#endif  /* __cplusplus */
-
-	/*Set the number of threads on runtime.*/
-	void openblas_set_num_threads(int num_threads);
-
-	void sgemm_(char *, char *, blasint *, blasint *, blasint *, float *,
-		float  *, blasint *, float  *, blasint *, float  *, float  *, blasint *);
-}
-
 
 #endif
