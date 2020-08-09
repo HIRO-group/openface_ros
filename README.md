@@ -4,11 +4,11 @@ Repository that hosts software libraries and ROS packages for gaze and emotion d
 
 ![](images/result2.png)
 
-The software in this repo has been developed for, and tested on, a Sawyer Research Robot and Realsense---a widely used platform for research in HRC. Nonetheless, it is easy to customize to any robotic platform that shares similar hardware features. In fact, this package can be used with just a Intel Realsense camera, by itself (with one change, that we'll detail later)!
+The software in this repo has been developed for, and tested on, a Sawyer Research Robot and Realsense---a widely used platform for research in HRC. Nonetheless, it is easy to customize to any robotic platform that shares similar hardware features. In fact, this package can be used with just a standalone Intel Realsense camera (with one change to our code, that we'll detail later)!
 
 ## Installation
 
-Guide for installing, compiling and testing the openface_ros package in your ROS environment. This tutorial should be useful regardless of your skill level, from a first-time ROS user to an experienced engineer.
+Guide for installing, compiling and testing the `openface_ros` package in your ROS environment. This tutorial should be useful regardless of your skill level, from a first-time ROS user to an experienced robotics engineer.
 
 ### Prerequisites
 
