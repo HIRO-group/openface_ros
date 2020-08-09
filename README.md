@@ -4,7 +4,7 @@ Repository that hosts software libraries and ROS packages for gaze and emotion d
 
 ![](images/result2.png)
 
-The software in this repo has been developed for, and tested on, a Sawyer Research Robot and Realsense---a widely used platform for research in HRC. Nonetheless, it is easy to customize to any robotic platform that shares similar hardware features.
+The software in this repo has been developed for, and tested on, a Sawyer Research Robot and Realsense---a widely used platform for research in HRC. Nonetheless, it is easy to customize to any robotic platform that shares similar hardware features. In fact, this package can be used with just a Intel Realsense camera, by itself (with one change, that we'll detail later)!
 
 ## Installation
 
