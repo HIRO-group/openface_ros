@@ -14,19 +14,30 @@ Guide for installing, compiling and testing the `openface_ros` package in your R
 
 #### System Dependencies
 
-This repository needs `openface` and `realsense`. To install, compile and test openface package, please refer to the [installation tutorial](https://github.com/TadasBaltrusaitis/OpenFace/wiki) in openface github wiki page. Also, for realsense package, please refer to the [installation tutorial](https://github.com/IntelRealSense/realsense-ros) in realsense github page.
+This repository needs `openface` and `realsense`. To install, compile and test openface package, please refer to the [installation tutorial](https://github.com/TadasBaltrusaitis/OpenFace/wiki) in openface github wiki page. Also, for the realsense package, please refer to the [installation tutorial](https://github.com/IntelRealSense/realsense-ros) in the realsense github page.
 
 #### ROS Dependencies
 
-This repository supports `ROS kinetic`. [Here](https://hiro-group.ronc.one/ros_kinetic_installation.html)'s a recently guide on how to install ROS.
+This repository supports `ROS kinetic` and `ROS melodic` (recommended). It currently hasn't been tested on `ROS noetic` (yet). For installation, checkout [here](http://wiki.ros.org/melodic/Installation) for installing `ROS melodic`.
 
 ##### Catkin Tools
 
 We use the new Catkin Command Line Tools `catkin_tools`, a Python package that provides command line tools for working with the catkin meta build system and catkin workspaces. The following instructions apply to this new package, even though the repository can be used and compile with the old `catkin_make` without issues.
 
 ```sh
-sudo apt-get install python-catkin-tools
+sudo apt install python-catkin-tools
 ```
+
+
+### Execution with just the camera.
+
+This package works for just using the Realsense camera. To do so, go to `launch/openface_ros.launch`, and comment (or delete) this line - line 4:
+
+```xml
+<node name="send_urdf_fragment" pkg="intera_interface" type="send_urdf_fragment.py" output="screen" args="-f $(find openface_ros)/urdf/realsense.urdf -l head -j camera_link_base" />
+``` 
+
+From here, go to the `How to run this package` section to run the launch file, and then run the node where Openface actually runs.
 
 ### Execution on the robot
 
@@ -49,15 +60,15 @@ In `openface_realsense`, we first initialize an OpenFaceRos object, and it will 
 
 ## Functions of OpenFaceRos
 
-Most of the core functions are implemented in `openface_ros.cpp`. Belows are details of some important functions in OpenFaseRos.
+Most of the core functions are implemented in `openface_ros.cpp`. Belows are details of some important functions in OpenFaceRos.
 
 * `OpenFaceRos constructor`: For constructor, we need focal length, center of realsense, threshold of distance betwenn gaze vector and target and a flag enable action unit or not.
 
-* `getNose, getLeftPupil, getRightPupil`: These three function will give you position of nose, left pupil and right pupil individually. The location is pixel-based, which means location in showing image.
+* `getNose, getLeftPupil, getRightPupil`: These three functions will give you position of nose, left pupil and right pupil individually. The location is pixel-based, which means the location in the showing image.
 
 ## More information
 
-Here will include more information in this package.
+Here we'll include more information in this package.
 
 ### Meshes
 
@@ -66,5 +77,16 @@ This folder is for CAD files that we can show different objects (realsense) in s
 ### Sending urdf
 
 Because we want an extra realsense model mount on Sawyer robot, we need to add an extra link and joint into our urdf. To do this, we use `send_urdf_fragment` from [intera_sdk](https://github.com/RethinkRobotics/intera_sdk/tree/master/intera_interface/scripts), which can send exclusion links and joints to Sawyer robot. In launch file, we called `send_urdf_fragment` with our urdf file in urdf folder to connect realsense with Sawyer.
+
+
+### FAQ
+
+**Q**. When running the ROS OpenFace node, I don't see the results.
+
+**A**. Our node sets up two publishers - one for the RGB topic (the `/camera/color/image_raw` topic), and another for the depth topic (the `/camera/aligned_depth_to_color/image_raw` topic). Make sure that, before running this node, that you are receiving messages on those topics.
+
+
+For any other questions or concerns, feel free to reach out to the current maintainer of this repo ([peasant98](https://github.com/peasant98)).
+
 
 
