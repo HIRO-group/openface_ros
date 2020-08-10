@@ -2,6 +2,8 @@
 
 Repository that hosts software libraries and ROS packages for gaze and emotion detection, performed at the Human Interaction and Robotics Lab in University of Colorado at Boulder.
 
+Check out a cool pic of it in action below:
+
 ![](images/result2.png)
 
 The software in this repo has been developed for, and tested on, a Sawyer Research Robot and Realsense---a widely used platform for research in HRC. Nonetheless, it is easy to customize to any robotic platform that shares similar hardware features. In fact, this package can be used with just a standalone Intel Realsense camera (with one change to our code, that we'll detail later)!
